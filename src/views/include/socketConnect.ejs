@@ -1,0 +1,201 @@
+/* eslint-disable no-underscore-dangle */
+/* eslint-disable no-console */
+/* eslint-disable no-undef */
+
+// <script>
+const token = '<%= token %>';
+
+const myid = '<%= id %>';
+const myimgurl = '/img/my.jpg';
+const unkonwimg = '/img/unknow.jpg';
+const myname = '<%= name %>';
+$('#myname').text(myname);
+
+// eslint-disable-next-line no-unused-vars
+let nowMsg = [];
+let contacts = [];
+let activeContact;
+let activeContactobj;
+console.log('READTY');
+
+function contact(name, details, imgUrl, isOnline, id) {
+  // add class busy to span for offline Or clss online for online And
+  if (details === undefined) {
+    // eslint-disable-next-line no-param-reassign
+    details = `Some Details ${name}`;
+  }
+
+  return `        <li class="contact"  data-id=${id.toString()} onclick="clickContect(this);">
+                        <div class="wrap">
+                            <span class="contact-status ${isOnline ? 'online' : 'busy'}"></span>
+                            <img src=${imgUrl} alt="" />
+                            <div class="meta">
+                                <p class="name">${name}</p>
+                                <p class="preview">
+                                   ${details}
+                                </p>
+                            </div>
+                        </div>
+                    </li>`;
+}
+
+function msg(message, ismy, imgUrl) {
+  return `
+    <li class="${ismy ? 'sent' : 'replies'}">
+    <img src=${imgUrl} alt="" />
+    <p>${message}</p>
+</li>`;
+}
+
+function newMessage(message, isMy, imgUrl = unkonwimg) {
+  if ($.trim(message) === '') {
+    return;
+  }
+  const htmlMsg = msg(message, isMy, imgUrl);
+  $(htmlMsg).appendTo($('.messages ul'));
+  $('.contact.active .preview').html(`<span>You: </span>${message}`);
+  $('.messages').animate(
+    {
+      scrollTop: $(document).height(),
+    },
+    'fast',
+  );
+}
+// eslint-disable-next-line no-unused-vars
+function clickContect(that) {
+  if (activeContactobj) {
+    activeContactobj
+      .children('div')
+      .children('span')
+      .addClass('busy')
+      .removeClass('online');
+  }
+  const objThat = $(that);
+  activeContactobj = objThat;
+  const id = objThat.data('id');
+  activeContact = contacts.find((val) => val._id === id);
+  $('#recivename').text(activeContact.name);
+  objThat
+    .children('div')
+    .children('span')
+    .removeClass('busy')
+    .addClass('online');
+  $.get(
+    '/msguser/all',
+    {
+      myid,
+      otherid: id,
+    },
+    (data) => {
+      nowMsg = data;
+      $('.messages ul').empty();
+      data.forEach((element) => {
+        const isme = element.sentid === myid;
+        newMessage(element.data, isme, isme ? myimgurl : unkonwimg);
+      });
+    },
+  );
+}
+
+function addcontact(data, status) {
+  console.log('FOLLOW');
+  const htmlcontact = contact(
+    data.name,
+    'SOme detals ',
+    data.urlimg,
+    status,
+    data._id,
+  );
+
+  $(htmlcontact).appendTo($('#contacts ul'));
+
+  $('#contacts').animate(
+    {
+      scrollTop: $(document).height(),
+    },
+    'fast',
+  );
+  // contact(name, details, imgUrl, isOnline, id)
+}
+
+function changeStatus(id, isOnline) {
+  $(`[data-id=${id}]`)
+    .children('div')
+    .children('span')
+    .addClass(isOnline ? 'online' : 'busy')
+    .removeClass(isOnline ? 'busy' : 'online');
+}
+
+// let socket ;
+
+const socket = io({
+  query: {
+    token,
+  },
+  //  reconnection: false
+});
+$.get('/users/follow', { id: myid }, (data) => {
+  contacts = data;
+  data.forEach((element) => {
+    // eslint-disable-next-line no-param-reassign
+    if (!element.urlimg) element.urlimg = '/img/unknow.jpg';
+    addcontact(element, false);
+  });
+});
+socket.on('error', (error) => {
+  if (error.type === 'UnauthorizedError' || error.code === 'invalid_token') {
+    // redirect user to login page perhaps?
+    console.log("User's token has expired");
+  }
+});
+
+socket.on('connect', () => {
+  console.log(socket.id);
+  console.log('COnnected');
+});
+
+socket.on('reciverPeer', (Msg) => {
+  const isme = Msg.sentid === myid;
+  newMessage(Msg.data, isme, isme ? myimgurl : unkonwimg);
+});
+
+socket.on('online', (id) => {
+  console.log(`this user online ${id}`);
+  changeStatus(id, true);
+});
+
+socket.on('offline', (id) => {
+  console.log(`this user offline ${id}`);
+  changeStatus(id, false);
+});
+
+$('.submit').click(() => {
+  const message = $('#idInput').val();
+  console.log(activeContact._id);
+  socket.emit('chatting', {
+    data: message,
+    sentid: myid,
+    reciveid: activeContact._id,
+  });
+  newMessage(message, true, myimgurl);
+  $('#idInput').val(null);
+});
+
+$('.submitconect').click(() => {
+  const message = $('#contInput').val();
+  socket.emit('follow', undefined, message, (status, user) => {
+    console.log(status);
+    // console.log(status)
+    addcontact({ _id: user._id, name: user.name }, status);
+  });
+
+  //  newMessage(message, true, myimgurl);
+  $('#contInput').val(null);
+});
+
+// $("#addcontact").click(function () {
+//   addcontact(contacts[0]);
+//   console.log(socket.id)
+
+// });
+// </script>

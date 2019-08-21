@@ -1,0 +1,39 @@
+  <% include include/header.ejs %>
+  <script>
+    let token = "<%= token %>";
+    let myid = "<%= id %>";
+    console.log(myid);
+    
+    let socket = io({
+      query: {
+        token: token
+      }
+    });
+    socket.on("connect", () => {
+      console.log("COnnected");
+    });
+    socket.on("reciverPeer", (msg, sendid) => {
+  
+      console.log("reciverPeer");
+      $("#messages").append("<li>" + msg + "</li>");
+    });
+    $(document).ready(function() {
+    $("#buttonSend").click(function() {
+      socket.emit("chatting", $("#m").val(), myid, $("#reciver").val());
+      $("#messages").append("<li>" + $("#m").val() + "</li>");
+      $("#m").val("");
+      //$("#reciver").val("");
+    });
+  })
+  </script>
+
+  <body>
+    <h1><%= title %></h1>
+    <p>Welcome to <%= title %></p>
+    <p>Welcome to <%= id %></p>
+    <ul id="messages"></ul>
+
+    Msg : <input id="m" autocomplete="off" /> reciver Id :
+    <input id="reciver" autocomplete="off" />
+    <button id="buttonSend">Send</button>
+<% include include/footer.ejs %>

@@ -35,7 +35,9 @@ build/Release
 # Dependency directories
 node_modules/
 jspm_packages/
-
+public/
+dist/
+lib/
 # TypeScript v1 declaration files
 typings/
 
@@ -59,3 +61,19 @@ typings/
 
 # next.js build output
 .next
+
+.vscode/
+.eslintrc.js
+node_modules/
+build
+npm-debug.log
+.env
+.DS_Store
+# NodeJS specific #
+.nyc_output/
+coverage/
+node_modules/
+npm-debug.log
+package-lock.json
+test/*.log
+
